@@ -125,7 +125,7 @@ async def get_placeNum(request: Request):
 
     place_num = getPlaceUrl.getUrl(place_url)
 
-    return {"Code": "SU", "message": "Success", "place_num": place_num}
+    return JSONResponse(content={"code": "SU", "message": "Success", "place_num": place_num}, status_code=200)
 
 # 인스타그램 자동 업로더
 
@@ -153,11 +153,11 @@ async def upload_instagram(
         # Clean up: Delete the temporary file
         os.remove(temp_file_path)
 
-        return JSONResponse(content={"Code": "SU", "message": "Success"}, status_code=200)
+        return JSONResponse(content={"code": "SU", "message": "Success"}, status_code=200)
 
     except Exception as e:
-        return JSONResponse(content={"Code": "ER", "message": str(e)}, status_code=400)
+        return JSONResponse(content={"code": "ER", "message": str(e)}, status_code=400)
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='127.0.0.1', port=8000)
+    uvicorn.run(app, host='0.0.0.0', port=8000)
