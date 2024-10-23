@@ -48,15 +48,15 @@ class CompletionExecutor:
 
     def review_execute(review_request_data):
         headers = {
-            'X-NCP-CLOVASTUDIO-API-KEY': config['X-NCP-CLOVASTUDIO-API-KEY'],
-            'X-NCP-APIGW-API-KEY': config['X-NCP-APIGW-API-KEY'],
-            'X-NCP-CLOVASTUDIO-REQUEST-ID': config['X-NCP-CLOVASTUDIO-REQUEST-ID-1'],
+            'X-NCP-CLOVASTUDIO-API-KEY': config['X_NCP_CLOVASTUDIO_API_KEY'],
+            'X-NCP-APIGW-API-KEY': config['X_NCP_APIGW_API_KEY'],
+            'X-NCP-CLOVASTUDIO-REQUEST-ID': config['X_NCP_CLOVASTUDIO_REQUEST_ID_1'],
             'Content-Type': 'application/json; charset=utf-8',
             'Accept': 'text/event-stream'
         }
 
         # POST 요청을 보냅니다.
-        with requests.post(config['CLOVA-HOST'] + '/testapp/v1/chat-completions/HCX-003',
+        with requests.post(config['CLOVA_HOST'] + '/testapp/v1/chat-completions/HCX-003',
                            headers=headers, json=review_request_data, stream=True) as r:
 
             flag = True
@@ -91,16 +91,16 @@ class CompletionExecutor:
 
     def feedback_execute(feedback_request_data):
         headers = {
-            'X-NCP-CLOVASTUDIO-API-KEY': config['X-NCP-CLOVASTUDIO-API-KEY'],
-            'X-NCP-APIGW-API-KEY': config['X-NCP-APIGW-API-KEY'],
-            'X-NCP-CLOVASTUDIO-REQUEST-ID': config['X-NCP-CLOVASTUDIO-REQUEST-ID-2'],
+            'X-NCP-CLOVASTUDIO-API-KEY': config['X_NCP_CLOVASTUDIO_API_KEY'],
+            'X-NCP-APIGW-API-KEY': config['X_NCP_APIGW_API_KEY'],
+            'X-NCP-CLOVASTUDIO-REQUEST-ID': config['X_NCP_CLOVASTUDIO_REQUEST_ID_2'],
             'Content-Type': 'application/json; charset=utf-8',
             'Accept': 'text/event-stream'
         }
         print("----feedback start------")
 
         # POST 요청을 보냅니다.
-        with requests.post(config['CLOVA-HOST'] + '/testapp/v1/chat-completions/HCX-003',
+        with requests.post(config['CLOVA_HOST'] + '/testapp/v1/chat-completions/HCX-003',
                            headers=headers, json=feedback_request_data, stream=True) as r:
 
             flag = True
