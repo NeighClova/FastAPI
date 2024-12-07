@@ -1,18 +1,24 @@
 from selenium.webdriver.common.by import By
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
-from openpyxl import Workbook
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 import os
 import time
 import datetime
 import requests
 import pandas as pd
-import asyncio
+import re
+import importlib.util
+
+spec_analyze = importlib.util.spec_from_file_location(
+    "review_analyze", "review_analyze.py")
+review_analyze = importlib.util.module_from_spec(spec_analyze)
+spec_analyze.loader.exec_module(review_analyze)
 
 
 def run_crawler(place_id, place_num):
@@ -52,7 +58,7 @@ def run_crawler(place_id, place_num):
     # Start crawling/scraping!
     try:
         options = webdriver.ChromeOptions()
-        options.add_argument('headless')
+        # options.add_argument('headless')
         options.add_argument('window-size=1920x1080')
         options.add_argument("disable-gpu")
         options.add_argument('--start-fullscreen')
@@ -62,17 +68,25 @@ def run_crawler(place_id, place_num):
         driver = webdriver.Chrome(options=options)
         driver.get(url)
         driver.implicitly_wait(30)
+        driver.execute_script(
+            "document.querySelector('div.flicking-camera').style.display='none';")
 
         # Pagedown
         driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.PAGE_DOWN)
 
-        while True:
+        for i in range(0, 3, 1):
             try:
                 # 새로운 페이지를 불러오기 위해 스크롤 다운
                 more_button = driver.find_element(
                     By.XPATH, '//a[@class="fvwqf"]/span[text()="더보기"]')
+
+                # 스크롤해서 해당 요소가 보이도록 하기
+                actions = ActionChains(driver)
+                actions.move_to_element(more_button).perform()
+                time.sleep(2)
+
+                # 그 후에 클릭 시도
                 more_button.click()
-                time.sleep(2)  # 새로운 리뷰가 로드될 때까지 기다림
 
             except NoSuchElementException:
                 print('-더보기 버튼 모두 클릭 완료-')
@@ -81,24 +95,33 @@ def run_crawler(place_id, place_num):
         # 새로운 페이지의 리뷰를 가져오기 위해 driver.page_source를 갱신하고 다시 BeautifulSoup으로 파싱
         html = driver.page_source
         bs = BeautifulSoup(html, 'html.parser')
-        reviews = bs.select('li.owAeM')
+        reviews = bs.select('li.pui__X35jYm.place_apply_pui.EjjAW')
 
         for r in reviews:
             # 리뷰 가져오는 부분은 그대로 유지
-            content = r.select_one('span.zPfVt')
+            content = r.select_one('a.pui__xtsQN-')
 
             # exception handling
-            content = content.text if content else ''
-            time.sleep(0.06)
+            if content:
+                content = content.text
 
-            list_sheet.append([content])
-            time.sleep(0.06)
+                # 정규식으로 전처리
+                content_cleaned = re.sub(r'[^가-힣0-9\s!?().,]', '', content)
+                time.sleep(0.06)
+
+                if content_cleaned:
+                    list_sheet.append([content_cleaned])
+                    time.sleep(0.06)
 
         # Save the file
         rating_df = pd.DataFrame(list_sheet, columns=['content'])
         file_path = os.path.join(
             files_folder, 'review_' + str(place_id) + '.csv')
         rating_df.to_csv(file_path, encoding='utf-8-sig', index=False)
+
+        # 크롤링 완료 후 분석 실행
+        print(f"place_id {place_id} 리뷰 분석 실행")
+        review_analyze.run_analyze(place_id)  # review_analyze.py 실행
 
     except Exception as e:
         print(e)

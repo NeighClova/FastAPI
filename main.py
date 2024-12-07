@@ -1,6 +1,6 @@
+import pandas as pd
 import json
 import os
-
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, select
@@ -17,13 +17,15 @@ from instagrapi import Client
 
 import concurrent.futures
 import importlib.util
+import subprocess
 import getPlaceUrl
 
-# naver_review 모듈 로드
-spec = importlib.util.spec_from_file_location(
+
+# 모듈 로드
+spec_review = importlib.util.spec_from_file_location(
     "naver_review", "naver_review.py")
-naver_review = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(naver_review)
+naver_review = importlib.util.module_from_spec(spec_review)
+spec_review.loader.exec_module(naver_review)
 
 # privateKey.json 파일에서 데이터베이스 설정 불러오기
 with open('privateKey.json', 'r') as file:
@@ -48,7 +50,7 @@ app = FastAPI()
 scheduler = AsyncIOScheduler()
 
 
-def do_thread_crawl(place_pairs: list):
+def do_thread_crawl_and_analyze(place_pairs: list):
     thread_list = []
     with ThreadPoolExecutor(max_workers=8) as executor:
         for place_id, place_num in place_pairs:
@@ -66,7 +68,8 @@ def do_process_crawl(place_pairs: list):
     process_list = []
     with ProcessPoolExecutor(max_workers=chunk_size) as executor:
         for chunk in chunks:
-            process_list.append(executor.submit(do_thread_crawl, chunk))
+            process_list.append(executor.submit(
+                do_thread_crawl_and_analyze, chunk))
         for execution in concurrent.futures.as_completed(process_list):
             execution.result()
 
@@ -85,7 +88,7 @@ def schedule_tasks():
 
     day_map = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
     for day, place_pairs in day_places.items():
-        cron_expr = f"32 19 * * {day_map[day]}"
+        cron_expr = f"00 03 * * {day_map[day]}"
         scheduler.add_job(
             do_process_crawl,
             CronTrigger.from_crontab(cron_expr),
@@ -109,8 +112,9 @@ async def shutdown_event():
 async def read_root():
     return {"message": "스케줄러가 실행 중입니다"}
 
-
 # place ID 추출
+
+
 @app.post("/")
 async def get_placeNum(request: Request):
     try:
@@ -121,10 +125,11 @@ async def get_placeNum(request: Request):
 
     place_num = getPlaceUrl.getUrl(place_url)
 
-    return {"Code": "SU", "message": "Success", "place_num": place_num}
-
+    return JSONResponse(content={"code": "SU", "message": "Success", "place_num": place_num}, status_code=200)
 
 # 인스타그램 자동 업로더
+
+
 @app.post("/instagram/upload")
 async def upload_instagram(
     instagramId: str = Form(...),
@@ -148,11 +153,11 @@ async def upload_instagram(
         # Clean up: Delete the temporary file
         os.remove(temp_file_path)
 
-        return JSONResponse(content={"Code": "SU", "message": "Success"}, status_code=200)
+        return JSONResponse(content={"code": "SU", "message": "Success"}, status_code=200)
 
     except Exception as e:
-        return JSONResponse(content={"Code": "ER", "message": str(e)}, status_code=400)
+        return JSONResponse(content={"code": "ER", "message": str(e)}, status_code=400)
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='127.0.0.1', port=8000)
+    uvicorn.run(app, host='0.0.0.0', port=8000)
